@@ -1,0 +1,32 @@
+
+{-# STDLIB_VERSION 5 #-}
+{-# CONTENT_TYPE DAPP #-}
+{-# SCRIPT_TYPE ACCOUNT #-}
+
+func getStr(key: String) = {
+    match getString(this, key) {
+      case b:String => b
+      case _ => ""
+    }
+}
+
+let keyBackupPKey = "back_pk"
+let backupPKeyString = getStr(keyBackupPKey)
+func getBackupKey() = if backupPKeyString== "" then this.bytes else backupPKeyString.fromBase58String()
+
+@Callable(i)
+func initBackupKey(publicKey: String)={
+    if (i.caller != this) then throw("SIBK: You cannot do this action") else
+    [
+      StringEntry(keyBackupPKey,publicKey)
+    ]
+}
+
+@Verifier(tx)
+func verify() = {
+    match (tx) {
+        case _ => {
+            sigVerify(tx.bodyBytes, tx.proofs[0], tx.senderPublicKey) || sigVerify(tx.bodyBytes, tx.proofs[0], getBackupKey())
+        }
+    }
+}
